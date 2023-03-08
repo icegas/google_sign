@@ -6,6 +6,7 @@ batch_size: 32
 label_map_path: ../data/sign_to_prediction_index_map.json
 
 val_users: ["2044", "34503", "26734", "30680", "36257", "25571"]
+split: none
 
 preprocessing:
   normalization: std

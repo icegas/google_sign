@@ -10,13 +10,13 @@ from utils.utils import NUMBER_OF_FEATURES, Normalizer
 
 class DataLoader():
 
-    def __init__(self, cfg, aug_cfg, split='train') -> None:
-        self.manifest_df = pd.read_csv(cfg['manifest_path'])
+    def __init__(self, cfg, aug_cfg) -> None:
+        self.manifest_df = pd.read_csv(cfg['manifest_path']).rename(columns={'participant_id' : 'user_id'})
         self.manifest_df['user_id'] = self.manifest_df['user_id'].apply(str)
         
-        if split=='train':
+        if cfg.split=='train':
             self.manifest_df = self.manifest_df[~self.manifest_df.user_id.isin(cfg.val_users)]
-        else:
+        elif cfg.split == 'val':
             self.manifest_df = self.manifest_df[self.manifest_df.user_id.isin(cfg.val_users)]
 
         self.path = Path(cfg['path'])

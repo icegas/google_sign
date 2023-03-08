@@ -18,16 +18,16 @@ class Transformer(tf.keras.Model):
     self.target_length = target_length
     self.input_reshape = tf.keras.layers.Reshape((-1,  NUMBER_OF_FEATURES))
     #self.output_reshape = tf.keras.layers.Reshape((NUMBER_OF_FEATURES, -1, 1))
-    self.output_reshape = tf.keras.layers.Reshape((NUMBER_OF_FEATURES, -1, target_length))
+    self.output_reshape = tf.keras.layers.Reshape((-1, NUMBER_OF_FEATURES, target_length))
 
     self.final_layer = tf.keras.layers.Dense(NUMBER_OF_FEATURES*target_length)
     #self.final_spatial_proj = tf.keras.layers.Dense(target_length)
 
-    self.concat = tf.keras.layers.Concatenate(axis=1)
-    self.bn_face = tf.keras.layers.BatchNormalization()
-    self.bn_left = tf.keras.layers.BatchNormalization()
-    self.bn_pose = tf.keras.layers.BatchNormalization()
-    self.bn_right = tf.keras.layers.BatchNormalization()
+    self.concat = tf.keras.layers.Concatenate(axis=2)
+    self.face_norm =  tf.convert_to_tensor([0.074, 0.07, 0.042])[:target_length]
+    self.left_norm =  tf.convert_to_tensor([0.14, 0.22, 0.0383])[:target_length]
+    self.pose_norm =  tf.convert_to_tensor([0.27, 0.7, 0.977]  )[:target_length]
+    self.right_norm = tf.convert_to_tensor([0.13, 0.15, 0.038] )[:target_length]
   
   def get_shape(self):
     return (None, 543, 2)
@@ -36,10 +36,10 @@ class Transformer(tf.keras.Model):
     return tf.subtract(x,  tf.reduce_mean(x, axis=(2), keepdims=True) )
 
   def norm_input(self, inputs):
-    face =  self.bn_face( self.remove_trend(inputs[:, :468, :, :]) )
-    left =  self.bn_left( self.remove_trend(inputs[:, 468:489, :, :]) )
-    pose =  self.bn_pose( self.remove_trend(inputs[:, 489:522, :, :]) )
-    right = self.bn_right( self.remove_trend(inputs[:, 522:, :, :]) )
+    face =  self.remove_trend(inputs[:, :, :468,  :])  / self.face_norm 
+    left =  self.remove_trend(inputs[:, :, 468:489, :]) / self.left_norm
+    pose =  self.remove_trend(inputs[:, :, 489:522, :]) / self.pose_norm
+    right = self.remove_trend(inputs[:, :, 522:, :]) / self.right_norm
 
     return self.concat([face, left, pose, right])
 

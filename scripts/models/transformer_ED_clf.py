@@ -21,16 +21,12 @@ class Transformer(tf.keras.Model):
 
     self.input_reshape = tf.keras.layers.Reshape((-1,  NUMBER_OF_FEATURES))
     #self.output_reshape = tf.keras.layers.Reshape((NUMBER_OF_FEATURES, -1, 1))
-    self.output_reshape = tf.keras.layers.Reshape((NUMBER_OF_FEATURES, -1, target_length))
+    self.output_reshape = tf.keras.layers.Reshape((-1, NUMBER_OF_FEATURES, target_length))
 
     self.final_layer = tf.keras.layers.Dense(NUMBER_OF_FEATURES*target_length)
     self.final_spatial_proj = tf.keras.layers.Dense(target_length)
 
     self.concat = tf.keras.layers.Concatenate(axis=1)
-    self.bn_face = tf.keras.layers.BatchNormalization()
-    self.bn_left = tf.keras.layers.BatchNormalization()
-    self.bn_pose = tf.keras.layers.BatchNormalization()
-    self.bn_right = tf.keras.layers.BatchNormalization()
   
   def get_shape(self):
     return (None, 543, 2)
@@ -39,10 +35,10 @@ class Transformer(tf.keras.Model):
     return tf.subtract(x,  tf.reduce_mean(x, axis=(2), keepdims=True) )
 
   def norm_input(self, inputs):
-    face =  self.bn_face( self.remove_trend(inputs[:, :468, :, :]) )
-    left =  self.bn_left( self.remove_trend(inputs[:, 468:489, :, :]) )
-    pose =  self.bn_pose( self.remove_trend(inputs[:, 489:522, :, :]) )
-    right = self.bn_right( self.remove_trend(inputs[:, 522:, :, :]) )
+    face =   self.remove_trend(inputs[:, :468, :, :]) 
+    left =   self.remove_trend(inputs[:, 468:489, :, :]) 
+    pose =   self.remove_trend(inputs[:, 489:522, :, :]) 
+    right =  self.remove_trend(inputs[:, 522:, :, :]) 
 
     return self.concat([face, left, pose, right])
 

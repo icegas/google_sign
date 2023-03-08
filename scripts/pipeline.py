@@ -7,6 +7,7 @@ from dataset.dataloader import DataLoader
 from utils import utils
 from utils.logger import Logger
 import numpy as np
+from tqdm import tqdm
 
 TMP_PATH = 'tmp/'
 
@@ -38,12 +39,17 @@ class Pipeline():
     def apply_gradients(self, nloss, tape):
         grads = tape.gradient(nloss, self.model.trainable_variables)
         self.optimizer.apply_gradients(zip(grads, self.model.trainable_variables))
+    def get_std(x, num):
+        a = x[:, :, num, :]
+        mask = a!=0
+        a[mask]
     
     def train(self, e):
+
         size = len(self.train_loader)
-        for i in range(10):
-            d = self.train_loader[i]
-            a = 3
+        #for i in range(10):
+        #    d = self.train_loader[i]
+        #    a = 3
 
         overall_loss = 0
         for i, batch in enumerate(self.train_loader):
