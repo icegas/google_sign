@@ -1,0 +1,5 @@
+name: Adam
+schedule:
+  name: CustomSchedule
+  params:
+    d_model: 256

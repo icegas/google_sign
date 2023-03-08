@@ -1,0 +1,7 @@
+#Augmentation for Encoder Decoder model
+use_augmentation: True
+augmentations:
+  time_mask:
+    p: 0.95
+    tmin: 10
+    tmax: 20

@@ -1,0 +1,80 @@
+manifest_path: "../data/train.csv"
+path: "../data"
+cols: ["x", "y"]
+num_frames: 60
+batch_size: 32
+label_map_path: ../data/sign_to_prediction_index_map.json
+
+val_users: ["2044", "34503", "26734", "30680", "36257", "25571"]
+
+preprocessing:
+  normalization: std
+  sub_mean: False
+  preprocess: False
+
+  stat:
+    face:
+      x:
+        min: -0.286376953125
+        max: 0.31640625
+        mean: 0
+        std: 0.07199298485357702
+      y:
+        min: -0.2208251953125
+        max: 0.2169189453125
+        mean: 0
+        std: 0.06048950180245789
+      z:
+        min: -0.150390625
+        max: 0.3046875
+        mean: 0
+        std: 0.0419067772836244
+
+    left_hand:
+      x:
+        min: -0.38818359375
+        max: 0.448486328125
+        mean: 0
+        std: 0.0781779990781785
+      y:
+        min: -0.287841796875
+        max: 0.328857421875
+        mean: 0
+        std: 0.06344199529085573
+      z:
+        min: -0.3779296875
+        max: 0.45703125
+        mean: 0
+        std: 0.038250144850150325
+
+    pose:
+      x:
+        min: -1.3330078125
+        max: 1.73828125
+        mean: 0
+        std: 0.2693553395707218
+      y:
+        min: -1.07421875
+        max: 1.9599609375
+        mean: 0
+        std: 0.6926884709661898
+      z:
+        min: -3.994140625
+        max: 5.3515625
+        std: 0.9760486774650002
+
+    right_hand:
+      x:
+        min: -0.45166015625
+        max: 0.336181640625
+        mean: 0
+        std: 0.07707528712357628
+      y:
+        min: -0.31396484375
+        max: 0.303955078125
+        std: 0.0599797298946576
+      z:
+        min: -0.5693359375
+        max: 0.44287109375
+        mean: 0
+        std: 0.037969459452285394

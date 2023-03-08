@@ -1,0 +1,13 @@
+module: transformer_ED
+name: Transformer
+params:
+  num_layers: 2
+  d_model: 256 #Dont forget to change it in optim schedule also
+  num_heads: 8
+  dff: 512
+  length: 128
+  target_length: 2 #should be equal to number of features 2 for x, y
+
+loss:
+  module: losses
+  name: masked_mse_loss
