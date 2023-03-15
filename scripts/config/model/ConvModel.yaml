@@ -1,0 +1,8 @@
+module: conv_model
+name: ConvModel
+params:
+  target_length: 2 #should be equal to number of features 2 for x, y
+
+loss:
+  module: losses
+  name: masked_mse_loss

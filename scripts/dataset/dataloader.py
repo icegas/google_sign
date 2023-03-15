@@ -13,6 +13,7 @@ class DataLoader():
     def __init__(self, cfg, aug_cfg) -> None:
         self.manifest_df = pd.read_csv(cfg['manifest_path']).rename(columns={'participant_id' : 'user_id'})
         self.manifest_df['user_id'] = self.manifest_df['user_id'].apply(str)
+        self.manifest_df = self.manifest_df[self.manifest_df.user_id.isin(["34503", "26734"])]
         
         if cfg.split=='train':
             self.manifest_df = self.manifest_df[~self.manifest_df.user_id.isin(cfg.val_users)]
@@ -41,7 +42,7 @@ class DataLoader():
         size = unq_frames.shape[0]
 
         if size <= self.num_frames:
-            ret[:size, :] = df[self.cols].fillna(0).values.reshape((size, ret.shape[1], len(self.cols)))
+            ret[:size, :] = df[self.cols].values.reshape((size, ret.shape[1], len(self.cols)))
         else:
             idx = np.random.randint(0, size-self.num_frames)
             norm_df = self.normalizer.normalize(

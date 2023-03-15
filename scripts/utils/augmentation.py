@@ -21,8 +21,15 @@ class Augmentator():
 
     def time_mask(self, input, params):
         time_end_mask = np.random.randint(params['tmin'], params['tmax'])
-        time_start_mask = np.random.randint(0, input.shape[1] - time_end_mask)
-        input[:, time_start_mask:time_start_mask+time_end_mask, :] = MASK_VALUE
+        first_zero = np.where(input==0)[0]
+        if first_zero.shape[0] > 0:
+            size = first_zero[0] - time_end_mask
+            if size < 5:
+                return input
+            time_start_mask = np.random.randint(0, size) 
+        else:
+            time_start_mask = np.random.randint(0, input.shape[0] - time_end_mask)
+        input[time_start_mask:time_start_mask+time_end_mask] = MASK_VALUE
         return input
     
     def feature_mask(self, input, params):

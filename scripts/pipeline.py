@@ -30,7 +30,7 @@ class Pipeline():
     def build_model(self, cfg):
         encoder = getattr(importlib.import_module("models.{}".format(cfg.model.module))
                              , cfg.model.name)(**cfg.model.params)
-        self.norm_input = encoder.remove_trend
+        self.norm_input = encoder.norm_input
         inp = tf.keras.layers.Input(encoder.get_shape())
         out = encoder(inp)
         self.model = tf.keras.models.Model(inp, out)
@@ -47,7 +47,7 @@ class Pipeline():
     def train(self, e):
 
         size = len(self.train_loader)
-        #for i in range(10):
+        #for i in range(200):
         #    d = self.train_loader[i]
         #    a = 3
 
@@ -58,8 +58,8 @@ class Pipeline():
             X = self.norm_input(X)
 
             with tf.GradientTape() as tape:
-                y_pred = self.model(X_aug, training=True)
-                nloss = self.loss([y_true, X_aug], y_pred, mask)
+                y_pred, _ = self.model(X_aug, training=True)
+                nloss = self.loss([y_true, X], y_pred, mask)
             self.apply_gradients(nloss, tape)
             overall_loss += nloss.numpy()
             print("loss: {} iteration: {}/{} epoch: {}/{}".format(overall_loss/(i+1), i, 

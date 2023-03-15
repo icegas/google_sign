@@ -2,6 +2,7 @@ epochs: 100
 defaults:
   - augment: augment_ED
   - train_loader: loader_ED
+  #- model: ConvModel
   - model: transformer_ED
   - optimizer: adam_schedule
   - logger: experiment

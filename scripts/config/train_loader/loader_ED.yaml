@@ -1,7 +1,7 @@
 manifest_path: "../data/train.csv"
 path: "../data"
 cols: ["x", "y"]
-num_frames: 60
+num_frames: 64
 batch_size: 32
 label_map_path: ../data/sign_to_prediction_index_map.json
 

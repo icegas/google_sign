@@ -14,9 +14,9 @@ class Transformer(tf.keras.Model):
                            num_heads=num_heads, dff=dff,
                            length=length,
                            dropout_rate=dropout_rate)
-
+      
     self.target_length = target_length
-    self.input_reshape = tf.keras.layers.Reshape((-1,  NUMBER_OF_FEATURES))
+    self.input_reshape = tf.keras.layers.Reshape((-1,  NUMBER_OF_FEATURES*target_length))
     #self.output_reshape = tf.keras.layers.Reshape((NUMBER_OF_FEATURES, -1, 1))
     self.output_reshape = tf.keras.layers.Reshape((-1, NUMBER_OF_FEATURES, target_length))
 
@@ -46,16 +46,18 @@ class Transformer(tf.keras.Model):
   def call(self, inputs):
 
     normed_input = self.norm_input(inputs)
-    spatial_proj = self.input_reshape( self.spatial_proj_layer(normed_input) )
+    #spatial_proj = self.input_reshape( self.spatial_proj_layer(normed_input) )
+    spatial_proj = self.input_reshape(normed_input)
 
     #spatial_proj = self.input_reshape( self.spatial_proj_layer(inputs) )
     proj = self.proj_layer(spatial_proj)
 
     x = self.encoder(proj) 
+    #x = self.decoder(proj, context)
 
     logits = self.output_reshape( self.final_layer(x) )  
 
-    return logits
+    return logits, normed_input
 
 #if __name__=='__main__':
 #  model = Transformer(num_layers=2, d_model=256, num_heads=8, dff=512, length=400, target_length=64)
