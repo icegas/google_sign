@@ -1,0 +1,28 @@
+module: transformer_recon_clf
+name: Transformer
+params:
+  num_layers: 2
+  num_layers_decoder: 1
+  d_model: 512 #Dont forget to change it in optim schedule also
+  d_model_decoder: 512
+  key_dim: 512
+  key_dim_decoder: 512
+  num_heads: 4
+  dff: 512
+  dff_decoder: 512
+  length: 64
+  target_length: 2 #should be equal to number of features 2 for x, y
+  dropout_rate: 0.3
+  dropout_rate_decoder: 0.01
+  last_dense: 512
+  last_dropout: 0.1
+
+loss:
+  module: losses
+  name: CCE_MAE
+  alpha: 100.0
+  params:
+    label_smoothing: 0.25
+    face_w: 1.0
+    hand_w: 10.0
+

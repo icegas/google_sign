@@ -1,0 +1,23 @@
+module: transformer_encoder
+name: Transformer
+params:
+  num_layers: 2
+  d_model: 512 #Dont forget to change it in optim schedule also
+  key_dim: 512
+  num_heads: 4
+  dff: 512
+  length: 64 #64
+  target_length: 2 #should be equal to number of features 2 for x, y
+  dropout_rate: 0.2
+  last_dense: 512
+  last_dropout: 0.05
+  pooling: SAP
+  heads: 4
+  hand_model_path: "/home/icegas/Desktop/kaggle/google_sign/notebooks/hand_model_2.tf"
+
+loss:
+  module: losses
+  name: CCE
+  alpha: 0.0
+  params:
+    label_smoothing: 0.5

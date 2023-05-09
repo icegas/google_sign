@@ -1,0 +1,70 @@
+#Augmentation for initial data
+X:
+  use_augmentation: False
+  augmentations:
+
+    mirror_hands:
+      p: 0.5
+
+
+#Augmentation for Encoder Decoder model
+recon:
+  use_augmentation: True
+  augmentations:
+
+    #double_hand_noise:
+    #  p: 0.3
+    #  std: 0.25
+    #bad_hand_noise:
+    #  p: 0.3
+    #  std: 0.1
+
+    #normal_noise:
+    #  p: 0.3
+    #  percent: 0.1
+    #  std: 0.003
+    #hand_normal_noise:
+    #  p: 0.8
+    #  percent: 0.2
+    #  std: 0.015
+    
+    scaling:
+      p: 0.5
+      percent: 0.3
+      std: 0.003
+    #hand_scaling:
+    #  p: 0.8
+    #  percent: 0.2
+    #  std: 0.02
+
+    #channel_mask:
+    #  p: 0.8
+    #  percent: 0.3
+    #hand_channel_mask:
+    #  p: 0.6
+    #  percent: 0.3
+
+    #channel_shuffle:
+    #  p: 0.8
+    #  percent: 0.3
+    #hand_channel_shuffle:
+    #  p: 0.6
+    #  percent: 0.3
+
+    #time_mask:
+    #  p: 0.3
+    #  percent: 0.1
+    #hand_time_mask:
+    #  p: 0.8
+    #  percent: 0.2
+
+    time_mask:
+      p: 1.1
+      percent: 0.3
+    
+    #for tansformer encoder
+    #time_mask:
+    #  p: 0.5
+    #  percent: 0.3
+  
+  

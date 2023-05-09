@@ -1,0 +1,14 @@
+module: transformer_feature_importance
+name: Transformer
+params:
+  num_layers: 1
+  d_model: 1086 #Dont forget to change it in optim schedule also
+  num_heads: 4
+  dff: 512
+  length: 600
+  target_length: 2 #should be equal to number of features 2 for x, y
+  dropout_rate: 0.4
+
+loss:
+  module: losses
+  name: cce_loss

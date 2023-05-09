@@ -1,5 +1,10 @@
 name: Adam
 schedule:
-  name: CustomSchedule
+  #name: CustomSchedule
+  name: CosSchedule
   params:
-    d_model: 256
+    d_model: 512
+    #warmup_steps: 4000
+    warmup_steps: 0 #4000
+    num_training_steps: 200
+

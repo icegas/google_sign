@@ -1,0 +1,11 @@
+module: PointNetSeg
+name: PointNet
+params:
+  num_points: 115
+  num_classes: 3
+
+loss:
+  module: losses
+  name: mse_cce_loss
+  gain: 1
+  alpha: 1

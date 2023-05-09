@@ -1,6 +1,6 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
-from utils.utils import NUMBER_OF_FEATURES
+from utils.utils import NUMBER_OF_FEATURES, LIP, NUMBER_OF_CLASSES, NUMBER_OF_MODEL_FEATURES, MASK_VALUE
 
 class EncoderConvLayer(tf.keras.layers.Layer):
   def __init__(self, filters, kernel_size, strides):
@@ -29,87 +29,103 @@ class DecoderConvLayer(tf.keras.layers.Layer):
     x = self.relu( self.bn(self.conv(x)) )
     return x
 
-class ConvModel(tf.keras.Model):
+class ConvModel():
   def __init__(self, *, target_length, dropout_rate=0.1):
-    super().__init__()
+    #super().__init__()
 
       
     self.target_length = target_length
-    self.input_reshape = tf.keras.layers.Reshape((-1,  NUMBER_OF_FEATURES*target_length, 1))
-    self.output_reshape = tf.keras.layers.Reshape((-1, NUMBER_OF_FEATURES, target_length))
+    #self.input_reshape = tf.keras.layers.Reshape((-1,  NUMBER_OF_FEATURES*target_length, 1))
+    #self.output_reshape = tf.keras.layers.Reshape((-1, NUMBER_OF_FEATURES, target_length))
 
     self.conv1_1 = tf.keras.layers.Conv2D(16, kernel_size=5, padding='same')
     self.conv1_2 = tf.keras.layers.Conv2D(16, kernel_size=5, padding='same', dilation_rate=2)
     self.conv1_3 = tf.keras.layers.Conv2D(16, kernel_size=5, padding='same', dilation_rate=4)
     self.conv_concat = tf.keras.layers.Concatenate()
 
-    self.conv1 = EncoderConvLayer(16, 3, strides=2)
-    self.conv2 = EncoderConvLayer(32, 3, strides=2)
-    self.conv3 = EncoderConvLayer(64, 3, strides=2)
+    self.flatten = tf.keras.layers.Flatten()
+    self.clf_dense = tf.keras.layers.Dense(NUMBER_OF_CLASSES, activation='softmax', name='outputs')
+    self.input_reshape = tf.keras.layers.Reshape((-1,  NUMBER_OF_MODEL_FEATURES * target_length, 1))
 
-    self.emb_layer = tf.keras.layers.Dense(544, activation='linear') #136 * 4
-    self.reshape_emb_enc = tf.keras.layers.Reshape((-1, 64*136))
-    self.reshape_emb_dec = tf.keras.layers.Reshape((-1, 136, 4))
+    self.pad = tf.keras.layers.ZeroPadding((0, 0), (0, 13))
+    self.conv1 = EncoderConvLayer(16, 5, strides=2)
+    self.conv2 = EncoderConvLayer(32, 5, strides=2)
+    self.conv3 = EncoderConvLayer(64, 5, strides=2)
+
+
+    self.clf_dense = tf.keras.layers.Dense(NUMBER_OF_CLASSES, activation='softmax', name='outputs')
+
     #self.emb_conv = tf.keras.layers.Conv2D(4, 1, padding='same')
 
     self.up1 = DecoderConvLayer(64, 3)
     self.up2 = DecoderConvLayer(32, 3)
     self.up3 = DecoderConvLayer(16, 3)
 
-    self.conv =  tf.keras.layers.Conv2D(4, kernel_size=(1, 3), padding='valid')
+    self.conv =  tf.keras.layers.Conv2D(4, kernel_size=(3, 3), padding='same')
     self.bn = tf.keras.layers.BatchNormalization()
     self.relu = tf.keras.layers.ReLU()
 
     self.conv_last = tf.keras.layers.Conv2D(1, 1, padding='same')
 
+
+    self.dense = tf.keras.layers.Dense(512, activation='relu')
+    self.dropout = tf.keras.layers.Dropout(0.4)
     self.final_layer = tf.keras.layers.Dense(NUMBER_OF_FEATURES*target_length)
 
     self.concat = tf.keras.layers.Concatenate(axis=2)
-    self.face_norm =  tf.convert_to_tensor([0.074, 0.07, 0.042])[:target_length]
-    self.left_norm =  tf.convert_to_tensor([0.14, 0.22, 0.0383])[:target_length]
-    self.pose_norm =  tf.convert_to_tensor([0.27, 0.7, 0.977]  )[:target_length]
-    self.right_norm = tf.convert_to_tensor([0.13, 0.15, 0.038] )[:target_length]
+    self.output_reshape = tf.keras.layers.Reshape((-1,  NUMBER_OF_MODEL_FEATURES, target_length))
+    self.crop = tf.keras.layers.Cropping2D(cropping=((0, 0), (0, 7)) )#352
+
   
   def get_shape(self):
-    return (None, 543, 2)
+    return (None, 543, 3)
 
   def remove_trend(self, x):
     return tf.subtract(x,  tf.reduce_mean(x, axis=(2), keepdims=True) )
 
   def norm_input(self, inputs):
-    face =  self.remove_trend(inputs[:, :, :468,  :])  / self.face_norm 
-    left =  self.remove_trend(inputs[:, :, 468:489, :]) / self.left_norm
-    pose =  self.remove_trend(inputs[:, :, 489:522, :]) / self.pose_norm
-    right = self.remove_trend(inputs[:, :, 522:, :]) / self.right_norm
-
-    return self.concat([face, left, pose, right])
-
-  def call(self, inputs):
-
-    normed_input = self.norm_input(inputs)
-    reshape = self.input_reshape(normed_input) 
+    #face =   self.remove_trend(inputs[:, :, :468, :])  / self.face_norm
     
-    x1 = self.conv1_1(reshape)
-    x2 = self.conv1_2(reshape)
-    x3 = self.conv1_3(reshape)
-    x = self.conv_concat([x1, x2, x3])
+    mask_0 = inputs != 0 
+    mask =  inputs != MASK_VALUE
+    inputs = inputs - inputs[:, :, 489:490, :]
+    inputs = tf.where(mask, inputs, tf.zeros_like(inputs) + MASK_VALUE)
+    inputs = tf.where(mask_0, inputs, tf.zeros_like(inputs) )
 
-    #x = self.conv1(x)
-    #x = self.conv2(x)
-    #x = self.conv3(x)
-    #emb = self.emb_layer( self.reshape_emb_enc(x) )
+    x = tf.concat([
+            tf.gather(inputs, indices=LIP, axis=2),
+            inputs[:, :, 468:489],
+            inputs[:, :, 489:522],
+            inputs[:, :, 522:]
+        ],2 )
+
+    return x
+
+  def build_model(self):
+
+    inp = tf.keras.layers.Input(self.get_shape())
+    normed_input =  self.norm_input(inp) 
+    normed_input = self.pad(normed_input) 
+    x = self.conv1(normed_input)
+    x = self.conv2(x)
+    x = self.conv3(x)
+    pool = tf.reduce_mean(x, axis=1)
+    pool = self.flatten(pool)
+
+    pool = self.dense(pool)
+    pool = self.dropout(pool) 
+    sign_probs = self.clf_dense(pool)
     
     #x = self.reshape_emb_dec(emb)
-    #x = self.up1(x)
-    #x = self.up2(x)
-    #x = self.up3(x)
-    #x = self.relu(self.bn(self.conv(x)))
+    x = self.up1(x)
+    x = self.up2(x)
+    x = self.up3(x)
+    x = self.relu(self.bn(self.conv(x)))
 
     x = self.conv_last(x)
-
     logits = self.output_reshape( x )  
-
-    return logits, normed_input
+    out = [logits, sign_probs]
+    return tf.keras.models.Model(inp, out)
 
 #if __name__=='__main__':
 #  model = Transformer(num_layers=2, d_model=256, num_heads=8, dff=512, length=400, target_length=64)

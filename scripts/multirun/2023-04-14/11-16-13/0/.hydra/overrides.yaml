@@ -1,0 +1,2 @@
+- model.params.pooling=MSAP
+- model.params.heads=3

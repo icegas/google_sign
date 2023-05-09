@@ -1,0 +1,2 @@
+- augment.recon.augmentations.rotate.p=0.5
+- logger.run_name=te_rotate_50

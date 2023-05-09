@@ -1,14 +1,17 @@
 module: transformer_ED
 name: Transformer
 params:
-  num_layers: 2
+  num_layers: 1
   d_model: 256 #Dont forget to change it in optim schedule also
-  num_heads: 8
-  dff: 256
-  length: 600
-  target_length: 2 #should be equal to number of features 2 for x, y
-  dropout_rate: 0.0
+  key_dim: 256
+  num_heads: 4
+  dff: 512
+  length: 128
+  target_length: 3 #should be equal to number of features 2 for x, y
+  dropout_rate: 0.01
 
 loss:
   module: losses
   name: masked_mse_loss
+  gain: 10
+  alpha: null

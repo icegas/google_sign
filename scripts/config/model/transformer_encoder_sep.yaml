@@ -1,0 +1,19 @@
+module: transformer_encoder_sep
+name: Transformer
+params:
+  num_layers: 1
+  d_model: 256 #Dont forget to change it in optim schedule also
+  key_dim: 256
+  num_heads: 4
+  dff: 512
+  length: 512
+  target_length: 3 #should be equal to number of features 2 for x, y
+  dropout_rate: 0.4
+  last_dense: 256
+  last_dropout: 0.1
+
+loss:
+  module: losses
+  name: cce_loss
+  gain: null
+  alpha: null

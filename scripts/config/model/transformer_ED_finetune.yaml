@@ -1,0 +1,14 @@
+module: transformer_ED_finetune
+name: Transformer
+params:
+  last_dense: 256
+  last_dropout: 0.2
+  target_length: 3
+  pre_path: /home/icegas/Desktop/kaggle/google_sign/mlartifacts/
+  model_path: 478560750682151201/2cc81d6b7bf043628bc7781aee97f479/artifacts/model_35/model_35.tf
+
+loss:
+  module: losses
+  name: cce_loss
+  gain: null
+  alpha: null

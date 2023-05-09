@@ -1,0 +1,81 @@
+augment:
+  X:
+    use_augmentation: false
+    max_aug: 3
+    augmentations:
+      mirror_hands:
+        p: 0.5
+  recon:
+    use_augmentation: true
+    max_aug: 3
+    augmentations:
+      mirror_hands:
+        p: 0.5
+      rotate:
+        p: 0.8
+        theta_std: 4
+      normal_noise:
+        p: 0.5
+        percent: 0.5
+        std: 0.003
+      scaling:
+        p: 0.5
+        percent: 0.5
+        std: 0.003
+      time_mask:
+        p: 0.1
+        percent: 0.1
+      hand_time_mask:
+        p: 0.8
+        percent: 0.5
+train_loader:
+  manifest_path: ../../data/train.csv
+  path: ../../data/
+  cols:
+  - x
+  - 'y'
+  - z
+  num_frames: 64
+  batch_size: 32
+  label_map_path: ../../data/sign_to_prediction_index_map.json
+  data_path: ../../data/npy_64/
+  val_users:
+  - '36257'
+  ret_user_id: false
+model:
+  module: transformer_encoder
+  name: Transformer
+  params:
+    num_layers: 2
+    d_model: 512
+    key_dim: 512
+    num_heads: 4
+    dff: 512
+    length: 64
+    target_length: 2
+    dropout_rate: 0.2
+    last_dense: 512
+    last_dropout: 0.1
+    pooling: SAP
+    heads: 4
+  loss:
+    module: losses
+    name: CCE
+    alpha: 0.0
+    params:
+      label_smoothing: 0.25
+optimizer:
+  name: Adam
+  schedule:
+    name: CosSchedule
+    params:
+      d_model: 512
+      warmup_steps: 0
+      num_training_steps: 200
+logger:
+  tracking_uri: http://127.0.0.1:5000
+  experiment_name: google_sign
+  run_name: test
+epochs: 200
+eval: true
+test: false

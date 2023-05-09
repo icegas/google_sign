@@ -1,8 +1,15 @@
-epochs: 100
+epochs: 200
+#epochs: 1
+eval: False
+test: False
 defaults:
   - augment: augment_ED
   - train_loader: loader_ED
-  #- model: ConvModel
-  - model: transformer_ED
+  #- model: ConvModel_ED
+  #- model: transformer_ED
+  #- model: transformer_ED_clf
+  #- model: transformer_recon_clf
+  - model: transformer_encoder
+  #- model: transformer_ED_finetune
   - optimizer: adam_schedule
   - logger: experiment

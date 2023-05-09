@@ -1,4 +1,11 @@
 tracking_uri: http://127.0.0.1:5000
 experiment_name: google_sign
-run_name: transformer_encoder_decoder
-#run_name: ConvModel
+
+#run_name: transformer_recon_clf
+#run_name: transformer_ED_clf
+run_name: te_prod_best_last
+#run_name: transformer_ED_clf_scaling_face_50_hand_100
+#run_name: test
+#run_name: transformer_encoder_lnorm_mean
+
+#run_name: ConvModel_augment_mp_res

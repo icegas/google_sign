@@ -1,70 +1,153 @@
 import tensorflow as tf
 import tensorflow_addons as tfa
 from models.transformer_utils import *
-from utils.utils import NUMBER_OF_FEATURES
+from utils.utils import NUMBER_OF_MODEL_FEATURES, NUMBER_OF_CLASSES, LIP, MASK_VALUE, POSE_IDX, LEFT_HAND_IDX, RIGHT_HAND_IDX
 
-class Transformer(tf.keras.Model):
-  def __init__(self, *, num_layers, d_model, num_heads, dff,
-               length, target_length, dropout_rate=0.1, cols=2):
-    super().__init__()
-    self.cols = cols
-    self.spatial_proj_layer = tf.keras.layers.Dense(1)
-    self.proj_layer = tf.keras.layers.Dense(d_model)
+INIT_HE_UNIFORM = tf.keras.initializers.he_uniform
+INIT_GLOROT_UNIFORM = tf.keras.initializers.glorot_uniform
 
-    self.encoder = Encoder(num_layers=num_layers, d_model=d_model,
+class Transformer():
+  def __init__(self, *, num_layers, d_model, key_dim, num_heads, dff,
+               length, target_length, dropout_rate=0.1,
+                num_layers_decoder, d_model_decoder, key_dim_decoder,
+               dff_decoder,  
+               dropout_rate_decoder=0.1, last_dense=256, last_dropout=0.2):
+    #self.proj_layer = tf.keras.layers.Dense(d_model, kernel_initializer=INIT_HE_UNIFORM)
+    self.proj_layer = tf.keras.layers.Dense(d_model, kernel_initializer=INIT_GLOROT_UNIFORM, activation=tf.keras.activations.gelu)
+    self.target_length = target_length
+
+    self.encoder = Encoder(num_layers=num_layers, d_model=d_model, key_dim=key_dim,
                            num_heads=num_heads, dff=dff,
                            length=length,
                            dropout_rate=dropout_rate)
     
     self.pooling = tf.keras.layers.GlobalAveragePooling1D()
-    self.clf_dense = tf.keras.layers.Dense(NUMBER_OF_FEATURES, activation='softmax')
+    self.clf_dense = tf.keras.layers.Dense(NUMBER_OF_CLASSES, activation='softmax', name='outputs', kernel_initializer=INIT_GLOROT_UNIFORM)
+    self.dense = tf.keras.layers.Dense(last_dense, activation=tf.keras.activations.gelu, kernel_initializer=INIT_GLOROT_UNIFORM)
+    self.dropout = tf.keras.layers.Dropout(last_dropout)
 
-    self.input_reshape = tf.keras.layers.Reshape((-1,  NUMBER_OF_FEATURES))
-    #self.output_reshape = tf.keras.layers.Reshape((NUMBER_OF_FEATURES, -1, 1))
-    self.output_reshape = tf.keras.layers.Reshape((-1, NUMBER_OF_FEATURES, target_length))
+    self.input_reshape = tf.keras.layers.Reshape((-1,  NUMBER_OF_MODEL_FEATURES * target_length))
 
-    self.final_layer = tf.keras.layers.Dense(NUMBER_OF_FEATURES*target_length)
-    self.final_spatial_proj = tf.keras.layers.Dense(target_length)
+    #self.face_embedding  = tf.keras.layers.Dense(64)
+    #self.left_embedding  = tf.keras.layers.Dense(64)
+    #self.pose_embedding  = tf.keras.layers.Dense(64)
+    #self.right_embedding = tf.keras.layers.Dense(64)
+    n_units = 128
 
-    self.concat = tf.keras.layers.Concatenate(axis=1)
+    self.face_embedding  = LandmarkEmbedding(256, n_units, len(LIP) * target_length)
+    self.left_embedding  = LandmarkEmbedding(256, n_units, 21 * target_length)
+    self.pose_embedding  = LandmarkEmbedding(256, n_units, 33 * target_length)
+    self.right_embedding = LandmarkEmbedding(256, n_units, 21 * target_length)
+
+    self.concat = tf.keras.layers.Concatenate(axis=-1)
+    self.face_mean =   tf.constant( [0.4658, 0.4702, -0.02327] )[:self.target_length]
+    self.left_mean =   tf.constant( [0.6113, 0.573, -0.05847]  )[:self.target_length]
+    self.pose_mean =   tf.constant( [0.4949, 1.045, -0.68]     )[:self.target_length]
+    self.right_mean = tf.constant( [0.3384, 0.573, -0.05847]   )[:self.target_length]
+
+    self.face_std = tf.constant([0.06, 0.0535, 0.0145]          )[:self.target_length]
+    self.left_std = tf.constant([0.1215666, 0.157338, 0.058522] )[:self.target_length]
+    self.pose_std = tf.constant([0.27467, 0.694649, 0.970158748])[:self.target_length]
+    self.right_std = tf.constant([0.1215666, 0.157338, 0.058522])[:self.target_length]
+
+    self.norm_concat = tf.keras.layers.Concatenate(axis=2)
+    self.length = length
+    self.positional_embedding = tf.keras.layers.Embedding(length+1, n_units*4, embeddings_initializer=tf.keras.initializers.constant(0.0))
+
+    #self.decoder = Encoder(num_layers=num_layers_decoder, d_model=d_model_decoder,
+    #                       key_dim=key_dim_decoder, dff=dff_decoder,
+    #                       length=length, dropout_rate=dropout_rate_decoder, num_heads=num_heads)
+
+    self.decoder_proj_mask = tf.keras.layers.Dense(length, activation='sigmoid')
   
   def get_shape(self):
-    return (None, 543, 2)
+    return (None, 543, 3)
 
-  def remove_trend(self, x):
-    return tf.subtract(x,  tf.reduce_mean(x, axis=(2), keepdims=True) )
 
+  def get_embedding(self, inputs):
+
+    face =   self.face_embedding( inputs[:, :, :40, :] )   
+    left =   self.left_embedding( inputs[:, :, 40:61, :] ) 
+    pose =   self.pose_embedding( inputs[:, :, 61:94, :] ) 
+    right = self.right_embedding(  inputs[:, :, 94:, :] )  
+
+    return self.concat([face, left, pose, right])   
+
+  def get_positional_embedding(self, inp):
+    mask = tf.cast( tf.math.not_equal(inp, 0), tf.int32)
+    out = tf.reduce_sum(mask, axis=[2, 3])
+
+    mask = tf.cast( tf.math.not_equal(out, 0), tf.int32)
+    mask_0 = tf.math.not_equal( mask, 0 )
+
+    mask = tf.where( mask_0, tf.cumsum(mask, axis=1), 0 )
+    non_empty_frame_idxs = tf.cast(mask, tf.float32)
+
+    max_frame_idxs = tf.clip_by_value(
+                tf.reduce_max(non_empty_frame_idxs, axis=1, keepdims=True),
+                1,
+                np.PINF,
+            )
+
+    normalised_non_empty_frame_idxs = tf.where(
+            tf.math.equal(non_empty_frame_idxs, 0.0),
+            self.length,
+            tf.cast(
+                non_empty_frame_idxs / (max_frame_idxs + 1) * self.length,
+                tf.int32,
+            ),
+        )
+    
+    return normalised_non_empty_frame_idxs
+  
   def norm_input(self, inputs):
-    face =   self.remove_trend(inputs[:, :468, :, :]) 
-    left =   self.remove_trend(inputs[:, 468:489, :, :]) 
-    pose =   self.remove_trend(inputs[:, 489:522, :, :]) 
-    right =  self.remove_trend(inputs[:, 522:, :, :]) 
 
-    return self.concat([face, left, pose, right])
+    face =  tf.gather(inputs, indices=LIP, axis=2)[:, :, :, :self.target_length]
+    mask = tf.math.not_equal(face, 0)#face != 0
+    face = (face - self.face_mean ) / self.face_std
+    face = tf.where(mask, face, tf.zeros_like(face) )
 
-  def call(self, inputs):
+    mask = tf.math.not_equal( inputs[:, :, LEFT_HAND_IDX, :self.target_length], 0 )
+    left = ( inputs[:, :, LEFT_HAND_IDX, :self.target_length] - self.left_mean ) / self.left_std
+    left = tf.where(mask, left, tf.zeros_like(left) )
 
-    normed_input = self.norm_input(inputs)
-    spatial_proj = self.input_reshape( self.spatial_proj_layer(normed_input) )
-    #spatial_proj = self.input_reshape( self.spatial_proj_layer(inputs) )
-    proj = self.proj_layer(spatial_proj)
+    mask = tf.math.not_equal( inputs[:, :, RIGHT_HAND_IDX, :self.target_length], 0 )
+    right = (inputs[:, :, RIGHT_HAND_IDX, :self.target_length] - self.right_mean ) / self.right_std
+    right = tf.where(mask, right, tf.zeros_like(right) )
+
+    pose = (inputs[:, :, POSE_IDX, :self.target_length] - self.pose_mean) / self.pose_std
+
+
+    x = tf.concat([
+            face, left, pose, right
+        ],2 )
+
+    return x
+
+  def build_model(self):
+    inp = tf.keras.layers.Input(self.get_shape())
+
+
+    norm_inp = self.norm_input(inp) 
+    #pad = tf.pad(inp,  [[0, 0], [0, tf.reduce_max([0, self.length-tf.shape(inp)[1]])], [0, 0], [ 0, 0]]  , 'CONSTANT')
+    
+    normalised_non_empty_frame_idxs = self.get_positional_embedding(inp)
+    embs = self.get_embedding(norm_inp) + self.positional_embedding(normalised_non_empty_frame_idxs)
+    proj = self.proj_layer(embs)
 
     x = self.encoder(proj) 
 
-    logits = self.output_reshape( self.final_layer(x) )  
+    #dec = self.decoder(x)
+    #dec_pool = self.pooling(dec)
+    #dec_output = self.decoder_proj_mask(pool)
 
     pool = self.pooling(x)
-    sign_probs = self.clf_dense(pool)
-    return logits, sign_probs
+    dec_output = self.decoder_proj_mask(pool)
 
-#if __name__=='__main__':
-#  model = Transformer(num_layers=2, d_model=256, num_heads=8, dff=512, length=400, target_length=64)
-#
-#
-#  inp = tf.convert_to_tensor( np.random.normal(size=[4, 128, 64]) )
-#  output = model(inp, training=False)
-#  print(output.shape)
-#
-#  inp = tf.convert_to_tensor( np.random.normal(size=[4, 256, 64]) )
-#  output = model(inp, training=False)
-#  print(output.shape)
+    pool = tf.concat([pool, dec_output], axis=-1)
+    dense = self.dense(pool)
+    dense = self.dropout(dense)
+    sign_probs = self.clf_dense(dense)
+
+    out = [dec_output, sign_probs]
+    return tf.keras.models.Model(inp, out)
